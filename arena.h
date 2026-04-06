@@ -254,7 +254,26 @@ QUICK USAGE:
     #include <stdalign.h>
     #define ARENA_ALIGNOF(type) alignof(type)
 #else
-    #define ARENA_ALIGNOF(type) offsetof(struct { char c; type d; }, d)
+    #if defined(__clang__)
+        /* 
+        NOTE:   It was concluded that declaring a new type inside the `offsetof` operator is
+                UB by omission (from c99 standard), due to the "comma problem" where having a comma
+                inside the new type can cause problems if `offsetof` was implemented as a macro
+                (which extends to declaring a type without comma).
+
+                In reality, only clang complains about this when adding `-Wpedantic` and compiling in
+                c99 standard.
+
+                See [DR496](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n2396.htm#dr_496)
+                for responses from the committee regarding this, and therefore
+                [clang's diagnostic behavior]
+                (https://github.com/llvm/llvm-project/issues/120357#issuecomment-2783172596)
+                regarding this.
+        */
+        #define ARENA_ALIGNOF(type) __extension__ offsetof(struct { char c; type d; }, d)
+    #else
+        #define ARENA_ALIGNOF(type) offsetof(struct { char c; type d; }, d)
+    #endif
 #endif
 
 
